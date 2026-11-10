@@ -6,16 +6,16 @@ This project will consist of two major branches:
 2. My "New Remote Camera Robot" project using a joystick to control a robot and its pan-and-tilt.
 
 Initial goal: Implement the original, known working, Remote Camera Robot on Trixie.
+
 Subsequent goal: Using the working Remote Camera Robot port to port New Remote Camera Robot to Trixie.
 
-=========================================================
+---
 
 ## Project Summary
 
 In this project we can remotely control a GoPiGo3 robot via a mobile device or a laptop.
 
-![Imgur]https://i.imgur.com/loJXgqr.jpeg)
-
+![GoPiGo Robot](GoPiGo_Robot.jpg)
 ## Requirements
 
 We need the following components for this project:
@@ -31,29 +31,36 @@ We need the following components for this project:
 
 The easiest way to use the Remote Camera Robot is to download and install the latest GoPiGo O/S.
 
-If you are using a different O/S - based on a Debian Buster release - do the following
 ### Note that Remote Camera Robot will not work on any O/S later than Buster.
+
+If you are using a different O/S - based on a Debian Buster release - do the following:
 
 In order to proceed the setup, make sure you have the `GoPiGo3` repository installed (not just cloned, but also installed) or that you have the latest version of `GoPiGo O/S`.  Note that GoPiGo O/S already has the Remote Camera Robot installed along with all the needed dependencies.
 
-To install the GoPiGo robot libraries and code in a different O/S, first clone the Dexter Industries GoPiGo repository via `git clone https://github.com/DexterInd/GoPiGo3.git`
+To install the GoPiGo robot libraries and code in a different O/S, first clone the Dexter Industries GoPiGo repository via:
+`git clone https://github.com/DexterInd/GoPiGo3.git`
 
 After going through the above paragraph, install the `Pi Camera` dependencies and `Flask` by running following command:
 ```
 sudo pip3 install -r requirements.txt
 ```
-Verify that you have Thonny installed. You can run the program from the command line, but Thonny is easier.  Run `sudo apt-get install thonny`
+Verify that you have Thonny installed. You can run the program from the command line, but Thonny is easier.  Run\
+`sudo apt-get install thonny`
 
 You should now have everything set up.
 
 ## Running it
 
-Start the server by navigating to the Remote Camera Robot directory at:
-`/home/pi/Dexter/GoPiGo3/Projects/RemoteCameraRobot`, then type the following command:
+Start the server by navigating to the Remote Camera Robot directory at:\
+`/home/pi/Dexter/GoPiGo3/Projects/RemoteCameraRobot`,\
+then type the following command:
 ```
-python3 remote_robot.py or run it within Thonny by right-clicking on the program file and selecting "Thonny".
+python3 remote_robot.py
 ```
+or run it within Thonny by right-clicking on the program file and selecting "Thonny".
+
 It's going to take a couple of seconds for the server to fire up.
+
 The web app is set to port `5000` whereas the video stream is found at port `5001`.
 
 If you have got `GoPiGo O/S` installed, then going to `http://GoPiGo3:5000` address will be enough.
