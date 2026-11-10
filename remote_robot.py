@@ -2,6 +2,13 @@
 # With this project you can control your Raspberry Pi Robot, the GoPiGo3, with a phone, tablet, or browser.
 # Remotely view your robot as first person in your browser.
 #
+# Trixie port version: 0.1.6-dev
+# Change summary: Ported streaming to Picamera2/libcamera, configured an unrotated
+# 1640x1232 full-field stream at 30 FPS, enabled high JPEG quality, and added
+# manual 50 Hz lighting flicker avoidance using Trixie's libcamera binding.
+# Added a server-side joystick dead zone to prevent low-force movement.
+# Increased the tested maximum motor speed from 300 to 500 degrees per second.
+#
 # You MUST run this with python3
 # To Run:  python3 flask_server.py
 
@@ -21,10 +28,13 @@ from easygopigo3 import EasyGoPiGo3
 
 # imports needed for stream server
 import io
-import picamera
 import socketserver
 from threading import Condition, Thread, Event
 from http import server
+from libcamera import Transform, controls
+from picamera2 import Picamera2
+from picamera2.encoders import JpegEncoder, Quality
+from picamera2.outputs import FileOutput
 
 logging.basicConfig(level = logging.DEBUG)
 
@@ -43,8 +53,9 @@ def signal_handler(signal, frame):
 directory_path = '/home/pi/Dexter/GoPiGo3/Projects/RemoteCameraRobot/static'
 
 MAX_FORCE = 5.0
+JOYSTICK_DEAD_ZONE = 0.15
 MIN_SPEED = 100
-MAX_SPEED = 300
+MAX_SPEED = 500
 try:
     gopigo3_robot = EasyGoPiGo3()
 except IOError:
@@ -89,6 +100,8 @@ def robot_commands():
     angle_degrees = int(float(args['angle_degrees']))
     angle_dir = args['angle_dir']
     force = float(args['force'])
+    if force <= JOYSTICK_DEAD_ZONE:
+        state = 'stop'
     determined_speed = MIN_SPEED + force * (MAX_SPEED - MIN_SPEED) / MAX_FORCE
     if determined_speed > MAX_SPEED:
         determined_speed = MAX_SPEED
@@ -149,26 +162,19 @@ def send_static(path):
 ### Video Streaming Stuff ###
 #############################
 
-class StreamingOutput(object):
+class StreamingOutput(io.BufferedIOBase):
     '''
     Class to which the video output is written to.
     The buffer of this class is then read by StreamingHandler continuously.
     '''
     def __init__(self):
         self.frame = None
-        self.buffer = io.BytesIO()
         self.condition = Condition()
 
     def write(self, buf):
-        if buf.startswith(b'\xff\xd8'):
-            # New frame, copy the existing buffer's content and notify all
-            # clients it's available
-            self.buffer.truncate()
-            with self.condition:
-                self.frame = self.buffer.getvalue()
-                self.condition.notify_all()
-            self.buffer.seek(0)
-        return self.buffer.write(buf)
+        with self.condition:
+            self.frame = buf
+            self.condition.notify_all()
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     '''
@@ -214,18 +220,37 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    # firing up the video camera (pi camera)
-    camera = picamera.PiCamera(resolution='320x240', framerate=30)
+    # firing up the video camera (Pi camera)
+    camera = Picamera2()
+    camera_transform = Transform()
+    camera_configuration = camera.create_video_configuration(
+        main = {'size': (1640, 1232)},
+        sensor = {
+            'output_size': (1640, 1232),
+            'bit_depth': 10
+        },
+        controls = {
+            'FrameRate': 30,
+            'AeFlickerMode': controls.AeFlickerModeEnum.Manual,
+            'AeFlickerPeriod': 10000
+        },
+        transform = camera_transform
+    )
+    camera.configure(camera_configuration)
     output = StreamingOutput()
-    camera.start_recording(output, format='mjpeg')
-    logging.info("Started recording with picamera")
+    camera.start_recording(
+        JpegEncoder(),
+        FileOutput(output),
+        quality = Quality.HIGH
+    )
+    logging.info("Started recording with Picamera2")
     STREAM_PORT = 5001
     stream = StreamingServer((HOST, STREAM_PORT), StreamingHandler)
 
     # starting the video streaming server
     streamserver = Thread(target = stream.serve_forever)
     streamserver.start()
-    logging.info("Started stream server for picamera")
+    logging.info("Started stream server for Picamera2")
 
     # starting the web server
     webserver = WebServerThread(app, HOST, WEB_PORT)
@@ -242,6 +267,7 @@ if __name__ == "__main__":
     # trigger shutdown procedure
     webserver.shutdown()
     camera.stop_recording()
+    camera.close()
     stream.shutdown()
 
     # and finalize shutting them down
