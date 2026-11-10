@@ -26,9 +26,9 @@ We need the following components for this project:
 In order to proceed the setup, make sure you have the `GoPiGo3` repository installed (not just cloned, but also installed) or that you have the latest version of `Raspbian For Robots`.
 
 After going through the above paragraph, install the `Pi Camera` dependencies and `Flask` by running following command:
- ```
- sudo pip3 install -r requirements.txt
- ```
+```
+sudo pip3 install -r requirements.txt
+```
 
 You should now have everything set up.
 
